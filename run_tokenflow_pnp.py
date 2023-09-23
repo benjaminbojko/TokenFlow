@@ -29,8 +29,15 @@ class TokenFlow(nn.Module):
         self.device = config["device"]
         
         sd_version = config["sd_version"]
+        hf_key = config["hf_key"]
+        
         self.sd_version = sd_version
-        if sd_version == '2.1':
+        self.hf_key = hf_key
+        
+        if hf_key is not None:
+            print(f'[INFO] using hugging face custom model key: {hf_key}')
+            model_key = hf_key
+        elif sd_version == '2.1':
             model_key = "stabilityai/stable-diffusion-2-1-base"
         elif sd_version == '2.0':
             model_key = "stabilityai/stable-diffusion-2-base"
@@ -40,6 +47,9 @@ class TokenFlow(nn.Module):
             model_key = "stabilityai/stable-diffusion-2-depth"
         else:
             raise ValueError(f'Stable-diffusion version {sd_version} not supported.')
+
+        # Create SD models
+        print(f'Loading SD model {model_key}')
 
         # Create SD models
         print('Loading SD model')

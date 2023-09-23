@@ -30,8 +30,12 @@ class TokenFlow(nn.Module):
         self.config = config
         self.device = config["device"]
         sd_version = config["sd_version"]
-
-        if sd_version == '2.1':
+        hf_key = config["hf_key"]
+        
+        if hf_key is not None:
+            print(f'[INFO] using hugging face custom model key: {hf_key}')
+            model_key = hf_key
+        elif sd_version == '2.1':
             model_key = "stabilityai/stable-diffusion-2-1-base"
         elif sd_version == '2.0':
             model_key = "stabilityai/stable-diffusion-2-base"
@@ -41,7 +45,7 @@ class TokenFlow(nn.Module):
             raise ValueError(f'Stable-diffusion version {sd_version} not supported.')
 
         # Create SD models
-        print('Loading SD model')
+        print(f'Loading SD model {model_key}')
 
         pipe = StableDiffusionPipeline.from_pretrained(model_key, torch_dtype=torch.float16).to("cuda")
         # pipe.enable_xformers_memory_efficient_attention()
