@@ -48,12 +48,12 @@ class Preprocess(nn.Module):
             raise ValueError(f'Stable-diffusion version {self.sd_version} not supported.')
         self.model_key = model_key
         # Create model
-        self.vae = AutoencoderKL.from_pretrained(model_key, subfolder="vae", revision="fp16",
+        self.vae = AutoencoderKL.from_pretrained(model_key, subfolder="vae",
                                                  torch_dtype=torch.float16).to(self.device)
         self.tokenizer = CLIPTokenizer.from_pretrained(model_key, subfolder="tokenizer")
-        self.text_encoder = CLIPTextModel.from_pretrained(model_key, subfolder="text_encoder", revision="fp16",
+        self.text_encoder = CLIPTextModel.from_pretrained(model_key, subfolder="text_encoder",
                                                           torch_dtype=torch.float16).to(self.device)
-        self.unet = UNet2DConditionModel.from_pretrained(model_key, subfolder="unet", revision="fp16",
+        self.unet = UNet2DConditionModel.from_pretrained(model_key, subfolder="unet",
                                                    torch_dtype=torch.float16).to(self.device)
         self.paths, self.frames, self.latents = self.get_data(opt.data_path, opt.n_frames)
         
@@ -286,7 +286,10 @@ class Preprocess(nn.Module):
 
 def prep(opt):
     # timesteps to save
-    if opt.sd_version == '2.1':
+    if opt.hf_key is not None:
+        print(f'[INFO] using hugging face custom model key: {opt.hf_key}')
+        model_key = opt.hf_key
+    elif opt.sd_version == '2.1':
         model_key = "stabilityai/stable-diffusion-2-1-base"
     elif opt.sd_version == '2.0':
         model_key = "stabilityai/stable-diffusion-2-base"
@@ -294,7 +297,7 @@ def prep(opt):
         model_key = "runwayml/stable-diffusion-v1-5"
     elif opt.sd_version == 'depth':
         model_key = "stabilityai/stable-diffusion-2-depth"
-    toy_scheduler = DDIMScheduler.from_pretrained(model_key, subfolder="scheduler")
+    toy_scheduler = DDIMScheduler.from_pretrained(model_key, subfolder="scheduler", use_safetensors=True)
     toy_scheduler.set_timesteps(opt.save_steps)
     timesteps_to_save, num_inference_steps = get_timesteps(toy_scheduler, num_inference_steps=opt.save_steps,
                                                            strength=1.0,
@@ -312,7 +315,7 @@ def prep(opt):
     # save inversion prompt in a txt file
     with open(os.path.join(save_path, 'inversion_prompt.txt'), 'w') as f:
         f.write(opt.inversion_prompt)
-    model = Preprocess(device, opt)
+    model = Preprocess(device, opt, opt.hf_key)
     recon_frames = model.extract_latents(
                                          num_steps=opt.steps,
                                          save_path=save_path,
@@ -340,6 +343,7 @@ if __name__ == "__main__":
     parser.add_argument('--W', type=int, default=512, 
                         help='for non-square videos, we recommand using 672 x 384 or 384 x 672, aspect ratio 1.75')
     parser.add_argument('--save_dir', type=str, default='latents')
+    parser.add_argument('--hf_key', type=str, default=None)
     parser.add_argument('--sd_version', type=str, default='2.1', choices=['1.5', '2.0', '2.1', 'ControlNet', 'depth'],
                         help="stable diffusion version")
     parser.add_argument('--steps', type=int, default=500)
